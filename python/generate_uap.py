@@ -181,7 +181,7 @@ if __name__ == '__main__':
 
 
             # Running universal perturbation
-            v = universal_perturbation(X, f, grad_fs, delta=0.2, p=2, num_classes=num_classes)
+            v = universal_perturbation(X, f, grad_fs, delta=0.2, num_classes=num_classes)
 
             # Saving the universal perturbation
             np.save(os.path.join(file_perturbation), v)
