@@ -30,6 +30,7 @@ def jacobian(y_flat, x, inds):
         loop_vars)
     return jacobian.stack()
 
+
 if __name__ == '__main__':
 
     # Parse arguments
