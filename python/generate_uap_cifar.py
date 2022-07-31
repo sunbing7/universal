@@ -143,13 +143,14 @@ if __name__ == '__main__':
             X = train_X
 
             #debug
+            '''
             out = persisted_sess.run(persisted_output, feed_dict={persisted_input: np.reshape(X[0:100], (100, 32, 32, 3))})
             print (np.argmax(out, axis=1))
             print (np.argmax(train_Y[0:100], axis=1))
             test_idx = np.arange(num_classes)
             grad = grad_fs(np.reshape(X[0], (-1, 32, 32, 3)), test_idx)
             #print(grad)
-
+            '''
 
             # Running universal perturbation
             v = universal_perturbation(X, f, grad_fs, delta=0.2, xi=0.1, num_classes=num_classes)
@@ -168,31 +169,39 @@ if __name__ == '__main__':
 
 
         # Test the perturbation on the image
-        #labels = open(os.path.join('data', 'labels.txt'), 'r').read().split('\n')
+        for img in test_X:
+            #labels = open(os.path.join('data', 'labels.txt'), 'r').read().split('\n')
 
-        #image_original = preprocess_image_batch([path_test_image], img_size=(256, 256), crop_size=(224, 224), color_mode="rgb")
-        image_original = test_X[0]
-        label_original = np.argmax(f(image_original), axis=1).flatten()
-        #str_label_original = labels[np.int(label_original)-1].split(',')[0]
+            #image_original = preprocess_image_batch([path_test_image], img_size=(256, 256), crop_size=(224, 224), color_mode="rgb")
+            image_original = img
+            label_original = np.argmax(f(image_original), axis=1).flatten()
+            #str_label_original = labels[np.int(label_original)-1].split(',')[0]
 
-        # Clip the perturbation to make sure images fit in uint8
-        #clipped_v = np.clip(undo_image_avg(image_original[0,:,:,:]+v[0,:,:,:]), 0, 255) - np.clip(undo_image_avg(image_original[0,:,:,:]), 0, 255)
-        clipped_v = v
+            # Clip the perturbation to make sure images fit in uint8
+            #clipped_v = np.clip(undo_image_avg(image_original[0,:,:,:]+v[0,:,:,:]), 0, 255) - np.clip(undo_image_avg(image_original[0,:,:,:]), 0, 255)
+            clipped_v = v
 
-        image_perturbed = image_original + clipped_v[None, :, :, :]
-        label_perturbed = np.argmax(f(image_perturbed), axis=1).flatten()
-        #str_label_perturbed = labels[np.int(label_perturbed)-1].split(',')[0]
+            image_perturbed = image_original + clipped_v[None, :, :, :]
+            label_perturbed = np.argmax(f(image_perturbed), axis=1).flatten()
+            #str_label_perturbed = labels[np.int(label_perturbed)-1].split(',')[0]
+            if label_original != label_perturbed:
+                break
 
         # Show original and perturbed image
         plt.figure()
-        plt.subplot(1, 2, 1)
+        plt.subplot(1, 3, 1)
         plt.imshow((image_original[:, :, :] * 255).astype(dtype='uint8'), interpolation=None)
         #plt.title(str_label_original)
         plt.title(label_original)
 
-        plt.subplot(1, 2, 2)
+        plt.subplot(1, 3, 2)
         plt.imshow((image_perturbed[0, 0, :, :, :] * 255).astype(dtype='uint8'), interpolation=None)
         #plt.title(str_label_perturbed)
         plt.title(label_perturbed)
+
+        plt.subplot(1, 3, 3)
+        plt.imshow((clipped_v[0, :, :, :] * 255).astype(dtype='uint8'), interpolation=None)
+        #plt.title(str_label_perturbed)
+        plt.title('mask')
 
         plt.show()

@@ -101,22 +101,6 @@ if __name__ == '__main__':
     # Parse arguments
     argv = sys.argv[1:]
 
-    # Default values
-    path_train_imagenet = '/datasets2/gtsrb/train'
-    path_test_image = 'data/test_img.png'
-
-    try:
-        opts, args = getopt.getopt(argv,"i:t:",["test_image=","training_path="])
-    except getopt.GetoptError:
-        print ('python ' + sys.argv[0] + ' -i <test image> -t <imagenet training path>')
-        sys.exit(2)
-
-    for opt, arg in opts:
-        if opt == '-t':
-            path_train_imagenet = arg
-        if opt == '-i':
-            path_test_image = arg
-
     with tf.device(device):
         persisted_sess = tf.Session(config=tf.ConfigProto(
             allow_soft_placement=True, log_device_placement=False))
@@ -134,9 +118,8 @@ if __name__ == '__main__':
         persisted_sess.graph.get_operations()
 
         persisted_input = persisted_sess.graph.get_tensor_by_name("x:0")
-        persisted_output_bias = persisted_sess.graph.get_tensor_by_name("sequential_1/dense_2/BiasAdd:0")
-        persisted_output = persisted_sess.graph.get_tensor_by_name("sequential_1/dense_2/BiasAdd:0")#("sequential_1/dense_2/Softmax:0")
-        #persisted_output_bias = persisted_output
+        persisted_output = persisted_sess.graph.get_tensor_by_name("sequential_1/dense_2/BiasAdd:0")
+
         print('>> Computing feedforward function...')
         def f(image_inp): return persisted_sess.run(persisted_output, feed_dict={persisted_input: np.reshape(image_inp, (-1, 32, 32, 3))})
 
@@ -159,7 +142,7 @@ if __name__ == '__main__':
             X = train_X
 
             #debug
-            #test
+            '''
             input_v = persisted_sess.graph.get_tensor_by_name("x:0")
             output_v = persisted_sess.graph.get_tensor_by_name("sequential_1/dense_2/BiasAdd:0")
             gradients = tf.gradients(output_v[0], input_v)
@@ -174,10 +157,10 @@ if __name__ == '__main__':
             test_idx = np.arange(43)
             grad = grad_fs(np.reshape(X[0], (-1, 32, 32, 3)), test_idx)
             #print(grad)
-
+            '''
 
             # Running universal perturbation
-            v = universal_perturbation(X, f, grad_fs, delta=0.2, num_classes=num_classes)
+            v = universal_perturbation(X, f, grad_fs, delta=0.2, xi=40, num_classes=num_classes)
 
             # Saving the universal perturbation
             np.save(os.path.join(file_perturbation), v)
@@ -193,31 +176,39 @@ if __name__ == '__main__':
 
 
         # Test the perturbation on the image
-        #labels = open(os.path.join('data', 'labels.txt'), 'r').read().split('\n')
+        for img in test_X:
+            #labels = open(os.path.join('data', 'labels.txt'), 'r').read().split('\n')
 
-        #image_original = preprocess_image_batch([path_test_image], img_size=(256, 256), crop_size=(224, 224), color_mode="rgb")
-        image_original = test_X[0]
-        label_original = np.argmax(f(image_original), axis=1).flatten()
-        #str_label_original = labels[np.int(label_original)-1].split(',')[0]
+            #image_original = preprocess_image_batch([path_test_image], img_size=(256, 256), crop_size=(224, 224), color_mode="rgb")
+            image_original = img
+            label_original = np.argmax(f(image_original), axis=1).flatten()
+            #str_label_original = labels[np.int(label_original)-1].split(',')[0]
 
-        # Clip the perturbation to make sure images fit in uint8
-        #clipped_v = np.clip(undo_image_avg(image_original[0,:,:,:]+v[0,:,:,:]), 0, 255) - np.clip(undo_image_avg(image_original[0,:,:,:]), 0, 255)
-        clipped_v = v
+            # Clip the perturbation to make sure images fit in uint8
+            #clipped_v = np.clip(undo_image_avg(image_original[0,:,:,:]+v[0,:,:,:]), 0, 255) - np.clip(undo_image_avg(image_original[0,:,:,:]), 0, 255)
+            clipped_v = v
 
-        image_perturbed = image_original + clipped_v[None, :, :, :]
-        label_perturbed = np.argmax(f(image_perturbed), axis=1).flatten()
-        #str_label_perturbed = labels[np.int(label_perturbed)-1].split(',')[0]
+            image_perturbed = image_original + clipped_v[None, :, :, :]
+            label_perturbed = np.argmax(f(image_perturbed), axis=1).flatten()
+            #str_label_perturbed = labels[np.int(label_perturbed)-1].split(',')[0]
+            if label_original != label_perturbed:
+                break
 
         # Show original and perturbed image
         plt.figure()
-        plt.subplot(1, 2, 1)
-        plt.imshow((image_original[:, :, :] * 255).astype(dtype='uint8'), interpolation=None)
+        plt.subplot(1, 3, 1)
+        plt.imshow((image_original[:, :, :]).astype(dtype='uint8'), interpolation=None)
         #plt.title(str_label_original)
         plt.title(label_original)
 
-        plt.subplot(1, 2, 2)
-        plt.imshow((image_perturbed[0, 0, :, :, :] * 255).astype(dtype='uint8'), interpolation=None)
+        plt.subplot(1, 3, 2)
+        plt.imshow((image_perturbed[0, 0, :, :, :]).astype(dtype='uint8'), interpolation=None)
         #plt.title(str_label_perturbed)
         plt.title(label_perturbed)
+
+        plt.subplot(1, 3, 3)
+        plt.imshow((clipped_v[0, :, :, :]).astype(dtype='uint8'), interpolation=None)
+        #plt.title(str_label_perturbed)
+        plt.title('mask')
 
         plt.show()
