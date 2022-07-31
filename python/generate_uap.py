@@ -132,17 +132,13 @@ if __name__ == '__main__':
             tf.import_graph_def(graph_def, name='')
 
         persisted_sess.graph.get_operations()
-        # debug
-        #graph_op = persisted_sess.graph.get_operations()
-        #for i in graph_op:
-        #    print(i)
 
         persisted_input = persisted_sess.graph.get_tensor_by_name("x:0")
         persisted_output_bias = persisted_sess.graph.get_tensor_by_name("sequential_1/dense_2/BiasAdd:0")
         persisted_output = persisted_sess.graph.get_tensor_by_name("sequential_1/dense_2/BiasAdd:0")#("sequential_1/dense_2/Softmax:0")
         #persisted_output_bias = persisted_output
         print('>> Computing feedforward function...')
-        def f(image_inp): return persisted_sess.run(tf.multiply(persisted_output, 100), feed_dict={persisted_input: np.reshape(image_inp, (-1, 32, 32, 3))})
+        def f(image_inp): return persisted_sess.run(persisted_output, feed_dict={persisted_input: np.reshape(image_inp, (-1, 32, 32, 3))})
 
         file_perturbation = os.path.join('data', 'universal_gtsrb.npy')
 
@@ -153,7 +149,7 @@ if __name__ == '__main__':
 
             # TODO: Optimize this construction part!
             print('>> Compiling the gradient tensorflow functions. This might take some time...')
-            y_flat = tf.reshape(tf.multiply(persisted_output_bias, 1), (-1,))
+            y_flat = tf.reshape(persisted_output, (-1,))
             inds = tf.placeholder(tf.int32, shape=(num_classes,))
             dydx = jacobian(y_flat,persisted_input,inds)
 
@@ -172,7 +168,7 @@ if __name__ == '__main__':
 
             grad1 = test_sess.run(gradients, feed_dict={input_v: np.reshape(X[0], (1, 32, 32, 3))})
 
-            out = persisted_sess.run(tf.multiply(persisted_output, 1), feed_dict={persisted_input: np.reshape(X[0:100], (100, 32, 32, 3))})
+            out = persisted_sess.run(persisted_output, feed_dict={persisted_input: np.reshape(X[0:100], (100, 32, 32, 3))})
             print (np.argmax(out, axis=1))
             print (np.argmax(train_Y[0:100], axis=1))
             test_idx = np.arange(43)
